@@ -1,8 +1,16 @@
 import type { DatabaseSync } from 'node:sqlite';
+import { applyInvoice } from './purchasing.ts';
 
 export function recordInvoice(db: DatabaseSync, invoiceId: string, orderId: string) {
-  db.prepare('INSERT INTO invoices (id, order_id) VALUES (?, ?)').run(invoiceId, orderId);
-  db.prepare("UPDATE orders SET status = 'billed' WHERE id = ?").run(orderId);
+  db.exec('SAVEPOINT record_invoice');
+  try {
+    db.prepare('INSERT INTO invoices (id, order_id) VALUES (?, ?)').run(invoiceId, orderId);
+    applyInvoice(db, orderId);
+    db.exec('RELEASE record_invoice');
+  } catch (error) {
+    db.exec('ROLLBACK TO record_invoice; RELEASE record_invoice');
+    throw error;
+  }
 }
 
 export function invoiceFor(db: DatabaseSync, orderId: string) {

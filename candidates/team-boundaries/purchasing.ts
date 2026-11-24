@@ -9,3 +9,7 @@ export function orderStatus(db: DatabaseSync, orderId: string) {
   if (status === undefined || status === 'open' || status === 'billed' || status === 'canceled') return status;
   throw new Error('Invalid stored order status');
 }
+
+export function applyInvoice(db: DatabaseSync, orderId: string) {
+  db.prepare("UPDATE orders SET status = 'billed' WHERE id = ? AND status = 'open'").run(orderId);
+}
