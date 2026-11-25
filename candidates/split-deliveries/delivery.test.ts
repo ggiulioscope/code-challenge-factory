@@ -23,3 +23,16 @@ test('orders have independent balances', t => {
   assert.equal(recordDelivery(db, 18, 3), 0);
   assert.throws(() => recordDelivery(db, 18, 1));
 });
+
+test('separate arrivals can have the same quantity and rejected inputs add no history', t => {
+  const db = createDatabase();
+  t.after(() => db.close());
+  assert.equal(recordDelivery(db, 17, 4), 6);
+  for (const quantity of [0, -1, 0.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1]) {
+    assert.throws(() => recordDelivery(db, 17, quantity));
+  }
+  assert.throws(() => recordDelivery(db, 999, 1));
+  assert.equal(recordDelivery(db, 17, 4), 2);
+  const rows = db.prepare('SELECT order_id, quantity FROM deliveries ORDER BY id').all();
+  assert.deepEqual(rows.map(row => [row.order_id, row.quantity]), [[17, 4], [17, 4]]);
+});
